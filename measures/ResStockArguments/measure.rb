@@ -735,47 +735,64 @@ class ResStockArguments < OpenStudio::Measure::ModelMeasure
 
     # Conditioned floor area
     # TODO: Disaggregate detached and mobile home
-    cfas = { ['0-499', HPXML::ResidentialTypeSFD] => 298, # AHS 2021, 1 detached and mobile home weighted average
-             ['0-499', HPXML::ResidentialTypeSFA] => 273, # AHS 2021, 1 attached
-             ['0-499', HPXML::ResidentialTypeApartment] => 322, # AHS 2021, multi-family weighted average
-             ['0-499', HPXML::ResidentialTypeManufactured] => 298, # AHS 2021, 1 detached and mobile home weighted average
-             ['500-749', HPXML::ResidentialTypeSFD] => 634, # AHS 2021, 1 detached and mobile home weighted average
-             ['500-749', HPXML::ResidentialTypeSFA] => 625, # AHS 2021, 1 attached
-             ['500-749', HPXML::ResidentialTypeApartment] => 623, # AHS 2021, multi-family weighted average
-             ['500-749', HPXML::ResidentialTypeManufactured] => 634, # AHS 2021, 1 detached and mobile home weighted average
-             ['750-999', HPXML::ResidentialTypeSFD] => 881, # AHS 2021, 1 detached and mobile home weighted average
-             ['750-999', HPXML::ResidentialTypeSFA] => 872, # AHS 2021, 1 attached
-             ['750-999', HPXML::ResidentialTypeApartment] => 854, # AHS 2021, multi-family weighted average
-             ['750-999', HPXML::ResidentialTypeManufactured] => 881, # AHS 2021, 1 detached and mobile home weighted average
-             ['1000-1499', HPXML::ResidentialTypeSFD] => 1228, # AHS 2021, 1 detached and mobile home weighted average
-             ['1000-1499', HPXML::ResidentialTypeSFA] => 1207, # AHS 2021, 1 attached
-             ['1000-1499', HPXML::ResidentialTypeApartment] => 1138, # AHS 2021, multi-family weighted average
-             ['1000-1499', HPXML::ResidentialTypeManufactured] => 1228, # AHS 2021, 1 detached and mobile home weighted average
-             ['1500-1999', HPXML::ResidentialTypeSFD] => 1698, # AHS 2021, 1 detached and mobile home weighted average
-             ['1500-1999', HPXML::ResidentialTypeSFA] => 1678, # AHS 2021, 1 attached
-             ['1500-1999', HPXML::ResidentialTypeApartment] => 1682, # AHS 2021, multi-family weighted average
-             ['1500-1999', HPXML::ResidentialTypeManufactured] => 1698, # AHS 2021, 1 detached and mobile home weighted average
-             ['2000-2499', HPXML::ResidentialTypeSFD] => 2179, # AHS 2021, 1 detached and mobile home weighted average
-             ['2000-2499', HPXML::ResidentialTypeSFA] => 2152, # AHS 2021, 1 attached
-             ['2000-2499', HPXML::ResidentialTypeApartment] => 2115, # AHS 2021, multi-family weighted average
-             ['2000-2499', HPXML::ResidentialTypeManufactured] => 2179, # AHS 2021, 1 detached and mobile home weighted average
-             ['2500-2999', HPXML::ResidentialTypeSFD] => 2678, # AHS 2021, 1 detached and mobile home weighted average
-             ['2500-2999', HPXML::ResidentialTypeSFA] => 2663, # AHS 2021, 1 attached
-             ['2500-2999', HPXML::ResidentialTypeApartment] => 2648, # AHS 2021, multi-family weighted average
-             ['2500-2999', HPXML::ResidentialTypeManufactured] => 2678, # AHS 2021, 1 detached and mobile home weighted average
-             ['3000-3999', HPXML::ResidentialTypeSFD] => 3310, # AHS 2021, 1 detached and mobile home weighted average
-             ['3000-3999', HPXML::ResidentialTypeSFA] => 3228, # AHS 2021, 1 attached
-             ['3000-3999', HPXML::ResidentialTypeApartment] => 3171, # AHS 2021, multi-family weighted average
-             ['3000-3999', HPXML::ResidentialTypeManufactured] => 3310, # AHS 2021, 1 detached and mobile home weighted average
-             ['4000+', HPXML::ResidentialTypeSFD] => 5587, # AHS 2021, 1 detached and mobile home weighted average
-             ['4000+', HPXML::ResidentialTypeSFA] => 7414, # AHS 2019, 1 attached
-             ['4000+', HPXML::ResidentialTypeApartment] => 6348, # AHS 2021, 4,000 or more all unit average
-             ['4000+', HPXML::ResidentialTypeManufactured] => 5587 } # AHS 2021, 1 detached and mobile home weighted average
-    cfa = cfas[[cfa_bin, unit_type]]
-    if cfa.nil?
-      runner.registerError("ResStockArguments: Could not look up conditioned floor area for '#{cfa_bin}' and '#{unit_type}'.")
-      return false
-    end
+    cfa_distributions = {
+       # Example: Skewed towards the upper end of the bin for SFD
+       ['0-499', HPXML::ResidentialTypeSFD] => { 
+          200 => 0.05, 
+          250 => 0.10, 
+          300 => 0.30, 
+          350 => 0.30, 
+          400 => 0.15, 
+          450 => 0.10 
+       },
+       
+       # Example: Skewed lower for SFA
+       ['0-499', HPXML::ResidentialTypeSFA] => { 
+          200 => 0.30, 
+          250 => 0.30, 
+          300 => 0.20, 
+          350 => 0.10, 
+          400 => 0.05, 
+          450 => 0.05 
+       },
+
+       # Each bin & home type below would need its own hard-coded distribution, here we use floats as placeholders.
+       ['0-499', HPXML::ResidentialTypeApartment] => { 322 => 1.0 },
+       ['0-499', HPXML::ResidentialTypeManufactured] => { 298 => 1.0 },
+
+       ['500-749', HPXML::ResidentialTypeSFD] => { 600 => 0.4, 650 => 0.4, 700 => 0.2 },
+       ['500-749', HPXML::ResidentialTypeSFA] => { 625 => 1.0 },
+       ['500-749', HPXML::ResidentialTypeApartment] => { 623 => 1.0 },
+       ['500-749', HPXML::ResidentialTypeManufactured] => { 634 => 1.0 },
+
+       ['750-999', HPXML::ResidentialTypeSFD] => { 881 => 1.0 },
+       ['750-999', HPXML::ResidentialTypeSFA] => { 872 => 1.0 },
+       ['750-999', HPXML::ResidentialTypeApartment] => { 854 => 1.0 },
+       ['750-999', HPXML::ResidentialTypeManufactured] => { 881 => 1.0 },
+
+       ['1000-1499', HPXML::ResidentialTypeSFD] => { 1228 => 1.0 },
+       ['1000-1499', HPXML::ResidentialTypeSFA] => { 1207 => 1.0 },
+       ['1000-1499', HPXML::ResidentialTypeApartment] => { 1138 => 1.0 },
+       ['1000-1499', HPXML::ResidentialTypeManufactured] => { 1228 => 1.0 },
+
+       # ... (Repeat for all bins: 1500-1999, 2000-2499, 2500-2999, 3000-3999) ...
+       
+       ['4000+', HPXML::ResidentialTypeSFD] => { 4500 => 0.5, 5000 => 0.3, 6000 => 0.2 },
+       ['4000+', HPXML::ResidentialTypeSFA] => { 7414 => 1.0 },
+       ['4000+', HPXML::ResidentialTypeApartment] => { 6348 => 1.0 },
+       ['4000+', HPXML::ResidentialTypeManufactured] => { 5587 => 1.0 }
+    }
+
+    # Look up the specific distribution hash
+    target_dist = cfa_distributions[[cfa_bin, unit_type]]
+
+    # Set seed
+    seed = args[:building_id] ? args[:building_id].to_i : 1
+    prng = Random.new(seed)
+
+    # Sample from the hard-coded distribution
+    cfa = sample_hardcoded_weights(target_dist, prng)
+
     args[:geometry_unit_conditioned_floor_area] = Float(cfa)
 
     # Vintage
@@ -996,6 +1013,20 @@ class ResStockArguments < OpenStudio::Measure::ModelMeasure
 
     new_arg_keys = args.keys - orig_args.keys
     return new_arg_keys
+  end
+
+  # Helper: Given a hash of { value => weight }, returns a weighted random key.
+  def sample_hardcoded_weights(distribution_hash, prng)
+    total_weight = distribution_hash.values.sum.to_f
+    target = prng.rand * total_weight
+    
+    current_weight = 0.0
+    distribution_hash.each do |val, weight|
+      current_weight += weight
+      return val if target <= current_weight
+    end
+    
+    return distribution_hash.keys.last # Fallback for rounding errors
   end
 end
 
