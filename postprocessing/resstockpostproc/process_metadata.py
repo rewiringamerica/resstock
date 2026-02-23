@@ -56,7 +56,7 @@ def process_simulation_outputs(
     df = remove_na_or_failed_buildings(df)
     df = replace_missing_buildings_with_baseline(df, base_raw_df, is_baseline)
     df = downselect_and_rename_cols(df, col_maps)  # Per sdr_column_definitions.csv
-    df = add_income_and_burden(df)
+    # df = add_income_and_burden(df)
     df = add_county_column(df)
     df = add_puma_column(df)
     df = add_baseline_upgrade_name_col(df, is_baseline)
@@ -482,6 +482,8 @@ def add_puma_column(df: pl.LazyFrame):
     here = pathlib.Path(__file__).resolve().parent
     pumas = gpd.read_file(here / "resources" / "gisdata" / "ipums_pums_2010_simple_t100_area_us_puma.geojson")
     puma_map = pumas[["GISJOIN", "puma_tsv"]].set_index("puma_tsv")["GISJOIN"].to_dict()
+    # Drop rows missing puma_tsv - these are in AK and HI
+    puma_map = {k:v for (k,v) in puma_map.items() if isinstance(k, str)}
     df = df.with_columns([pl.col("in.puma").replace(puma_map).alias("in.puma")])
     return df
 
